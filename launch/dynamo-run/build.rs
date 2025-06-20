@@ -29,7 +29,7 @@ fn main() -> anyhow::Result<()> {
 
     Emitter::default().add_instructions(&git_config)?.emit()?;
 
-    return Ok(());
+    Ok(())
 }
 
 fn has_feature(s: &str) -> bool {
