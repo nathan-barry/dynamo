@@ -52,5 +52,5 @@ futures-util = { version = "0.3" }
 regex = "1"
 
 [build-dependencies]
-vergen-gix = "1.0"
+vergen-gitcl = "1.0"
 anyhow = { workspace = true }

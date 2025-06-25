@@ -15,7 +15,7 @@
 
 use std::env;
 use std::process::Command;
-use vergen_gix::{Emitter, GixBuilder};
+use vergen_gitcl::{Emitter, GitclBuilder};
 
 fn main() -> anyhow::Result<()> {
     if has_cuda_toolkit() && !has_feature("cuda") && is_cuda_engine() {
@@ -25,7 +25,9 @@ fn main() -> anyhow::Result<()> {
         println!("cargo:warning=Metal not enabled, re-run with `--features metal`");
     }
 
-    let git_config = GixBuilder::default().describe(true, false, None).build()?;
+    let git_config = GitclBuilder::default()
+        .describe(true, false, None)
+        .build()?;
 
     Emitter::default().add_instructions(&git_config)?.emit()?;
 
