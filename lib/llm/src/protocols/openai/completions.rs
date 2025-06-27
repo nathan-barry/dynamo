@@ -25,6 +25,8 @@ mod delta;
 pub use aggregator::DeltaAggregator;
 pub use delta::DeltaGenerator;
 
+use crate::engines::ValidateRequest;
+
 use super::{
     common::{self, SamplingOptionsProvider, StopConditionsProvider},
     nvext::{NvExt, NvExtProvider},
@@ -331,5 +333,19 @@ impl TryFrom<common::StreamingCompletionResponse> for CompletionChoice {
         };
 
         Ok(choice)
+    }
+}
+
+/// Implements `ValidateRequest` for `NvCreateCompletionRequest`,
+/// allowing us to validate the data.
+impl ValidateRequest for NvCreateCompletionRequest {
+    fn validate(&self) -> Result<(), anyhow::Error> {
+        // Validate temperature
+        if let Some(temp) = self.inner.temperature {
+            if temp < 0.0 || temp > 2.0 {
+                anyhow::bail!("Temperature must be between 0.0 and 2.0, got {}", temp);
+            }
+        }
+        Ok(())
     }
 }

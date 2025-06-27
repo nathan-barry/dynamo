@@ -13,6 +13,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+use crate::engines::ValidateRequest;
+
 use super::nvext::NvExt;
 use super::nvext::NvExtProvider;
 use super::OpenAISamplingOptionsProvider;
@@ -171,5 +173,19 @@ impl OpenAIStopConditionsProvider for NvCreateChatCompletionRequest {
     /// Returns a reference to the optional `NvExt` extension, if available.
     fn nvext(&self) -> Option<&NvExt> {
         self.nvext.as_ref()
+    }
+}
+
+/// Implements `ValidateRequest` for `NvCreateChatCompletionRequest`,
+/// allowing us to validate the data.
+impl ValidateRequest for NvCreateChatCompletionRequest {
+    fn validate(&self) -> Result<(), anyhow::Error> {
+        // Validate temperature
+        if let Some(temp) = self.inner.temperature {
+            if temp < 0.0 || temp > 2.0 {
+                anyhow::bail!("Temperature must be between 0.0 and 2.0, got {}", temp);
+            }
+        }
+        Ok(())
     }
 }
