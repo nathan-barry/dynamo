@@ -50,7 +50,7 @@ impl<T: Send + Sync + 'static> Context<T> {
 
     pub fn rejoin<U: Send + Sync + 'static>(current: T, context: Context<U>) -> Self {
         Context {
-            current: current,
+            current,
             controller: context.controller,
             registry: context.registry,
             stages: context.stages,

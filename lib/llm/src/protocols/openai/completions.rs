@@ -23,7 +23,7 @@ use crate::engines::ValidateRequest;
 use super::{
     common::{self, SamplingOptionsProvider, StopConditionsProvider},
     nvext::{NvExt, NvExtProvider},
-    ContentProvider, OpenAISamplingOptionsProvider, OpenAIStopConditionsProvider,
+    validate, ContentProvider, OpenAISamplingOptionsProvider, OpenAIStopConditionsProvider,
 };
 
 mod aggregator;
@@ -282,12 +282,25 @@ impl TryFrom<common::StreamingCompletionResponse> for async_openai::types::Choic
 /// allowing us to validate the data.
 impl ValidateRequest for NvCreateCompletionRequest {
     fn validate(&self) -> Result<(), anyhow::Error> {
-        // Validate temperature
-        if let Some(temp) = self.inner.temperature {
-            if temp < 0.0 || temp > 2.0 {
-                anyhow::bail!("Temperature must be between 0.0 and 2.0, got {}", temp);
-            }
-        }
+        validate::validate_model(&self.inner.model)?;
+        validate::validate_prompt(&self.inner.prompt)?;
+        validate::validate_suffix(self.inner.suffix.as_deref())?;
+        validate::validate_max_tokens(self.inner.max_tokens)?;
+        validate::validate_temperature(self.inner.temperature)?;
+        validate::validate_top_p(self.inner.top_p)?;
+        validate::validate_n(self.inner.n)?;
+        // none for stream
+        // none for stream_options
+        validate::validate_logprobs(self.inner.logprobs)?;
+        // none for echo
+        validate::validate_stop(&self.inner.stop)?;
+        validate::validate_presence_penalty(self.inner.presence_penalty)?;
+        validate::validate_frequency_penalty(self.inner.frequency_penalty)?;
+        validate::validate_best_of(self.inner.best_of, self.inner.n)?;
+        validate::validate_logit_bias(&self.inner.logit_bias)?;
+        validate::validate_user(self.inner.user.as_deref())?;
+        // none for seed
+
         Ok(())
     }
 }

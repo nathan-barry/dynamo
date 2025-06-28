@@ -19,10 +19,10 @@ use validator::Validate;
 
 use crate::engines::ValidateRequest;
 
-use super::nvext::NvExt;
-use super::nvext::NvExtProvider;
-use super::OpenAISamplingOptionsProvider;
-use super::OpenAIStopConditionsProvider;
+use super::{
+    nvext::NvExt, nvext::NvExtProvider, validate, OpenAISamplingOptionsProvider,
+    OpenAIStopConditionsProvider,
+};
 
 mod aggregator;
 mod delta;
@@ -181,12 +181,37 @@ impl OpenAIStopConditionsProvider for NvCreateChatCompletionRequest {
 /// allowing us to validate the data.
 impl ValidateRequest for NvCreateChatCompletionRequest {
     fn validate(&self) -> Result<(), anyhow::Error> {
-        // Validate temperature
-        if let Some(temp) = self.inner.temperature {
-            if temp < 0.0 || temp > 2.0 {
-                anyhow::bail!("Temperature must be between 0.0 and 2.0, got {}", temp);
-            }
-        }
+        validate::validate_messages(&self.inner.messages)?;
+        validate::validate_model(&self.inner.model)?;
+        // none for store
+        validate::validate_reasoning_effort(&self.inner.reasoning_effort)?;
+        validate::validate_metadata(&self.inner.metadata)?;
+        validate::validate_frequency_penalty(self.inner.frequency_penalty)?;
+        validate::validate_logit_bias(&self.inner.logit_bias)?;
+        // none for logprobs
+        validate::validate_top_logprobs(self.inner.top_logprobs)?;
+        // validate::validate_max_tokens(self.inner.max_tokens)?; // warning depricated field
+        validate::validate_max_completion_tokens(self.inner.max_completion_tokens)?;
+        validate::validate_n(self.inner.n)?;
+        // none for modalities
+        // none for prediction
+        // none for audio
+        validate::validate_presence_penalty(self.inner.presence_penalty)?;
+        // none for response_format
+        // none for seed
+        validate::validate_service_tier(&self.inner.service_tier)?;
+        validate::validate_stop(&self.inner.stop)?;
+        // none for stream
+        // none for stream_options
+        validate::validate_temperature(self.inner.temperature)?;
+        validate::validate_top_p(self.inner.top_p)?;
+        validate::validate_tools(&self.inner.tools.as_deref())?;
+        // none for tool_choice
+        // none for parallel_tool_calls
+        validate::validate_user(self.inner.user.as_deref())?;
+        // none for function call
+        // none for functions
+
         Ok(())
     }
 }

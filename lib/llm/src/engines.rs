@@ -298,7 +298,7 @@ where
 
         // Validate the request first
         if let Err(validation_error) = request.validate() {
-            return Err(anyhow::anyhow!("Validation failed: {}", validation_error).into());
+            return Err(anyhow::anyhow!("Validation failed: {}", validation_error));
         }
 
         // Forward to inner engine if validation passes
