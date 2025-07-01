@@ -85,7 +85,7 @@ pub const MAX_METADATA_VALUE_LENGTH: usize = 512;
 /// Maximum allowed length for function names
 pub const MAX_FUNCTION_NAME_LENGTH: usize = 64;
 /// Maximum allowed value for Prompt IntegerArray elements
-pub const MAX_PROMPT_TOKEN_ID: u16 = 50256;
+pub const MAX_PROMPT_TOKEN_ID: u32 = 50256;
 
 //
 // Shared Fields
