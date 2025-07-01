@@ -26,8 +26,8 @@ pub mod completions;
 pub mod embeddings;
 pub mod models;
 pub mod nvext;
-pub mod validate;
 pub mod responses;
+pub mod validate;
 
 use validate::{
     validate_range, FREQUENCY_PENALTY_RANGE, PRESENCE_PENALTY_RANGE, TEMPERATURE_RANGE, TOP_P_RANGE,
