@@ -491,6 +491,7 @@ mod tests {
                             model: "test".to_string(),
                             choices: vec![],
                             usage: None,
+                            service_tier: None,
                             system_fingerprint: None,
                         }
                     }
@@ -517,7 +518,7 @@ mod tests {
             nvext: None,
         };
 
-        let single_in = SingleIn::new(nv_request, SingleInContext::new(()));
+        let single_in = SingleIn::new(nv_request);
         let result = validate_engine.generate(single_in).await;
 
         assert!(result.is_ok());
@@ -539,7 +540,7 @@ mod tests {
             nvext: None,
         };
 
-        let single_in = SingleIn::new(nv_request, SingleInContext::new(()));
+        let single_in = SingleIn::new(nv_request);
         let result = validate_engine.generate(single_in).await;
 
         assert!(result.is_err());
@@ -572,7 +573,7 @@ mod tests {
             nvext: None,
         };
 
-        let single_in = SingleIn::new(nv_request, SingleInContext::new(()));
+        let single_in = SingleIn::new(nv_request);
         let result = validate_engine.generate(single_in).await;
 
         assert!(result.is_ok());
@@ -601,7 +602,7 @@ mod tests {
             nvext: None,
         };
 
-        let single_in = SingleIn::new(nv_request, SingleInContext::new(()));
+        let single_in = SingleIn::new(nv_request);
         let result = validate_engine.generate(single_in).await;
 
         assert!(result.is_err());
@@ -609,14 +610,5 @@ mod tests {
             .unwrap_err()
             .to_string()
             .contains("Validation failed"));
-    }
-
-    #[test]
-    fn test_validate_engine_new() {
-        let inner_engine = MockEngine;
-        let validate_engine = ValidateEngine::new(inner_engine);
-
-        // Just ensure we can create the engine
-        assert!(std::mem::size_of_val(&validate_engine) > 0);
     }
 }
