@@ -149,7 +149,7 @@ impl<E> EngineDispatcher<E> {
 
 /// Trait on request types that allows us to validate the data
 pub trait ValidateRequest {
-    fn validate(&self) -> Result<(), anyhow::Error>;
+    fn validate_fields(&self) -> Result<(), anyhow::Error>;
 }
 
 /// Trait that allows handling both completion and chat completions requests
@@ -297,7 +297,7 @@ where
         let (request, context) = incoming_request.into_parts();
 
         // Validate the request first
-        if let Err(validation_error) = request.validate() {
+        if let Err(validation_error) = request.validate_fields() {
             return Err(anyhow::anyhow!("Validation failed: {}", validation_error));
         }
 

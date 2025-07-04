@@ -180,7 +180,7 @@ impl OpenAIStopConditionsProvider for NvCreateChatCompletionRequest {
 /// Implements `ValidateRequest` for `NvCreateChatCompletionRequest`,
 /// allowing us to validate the data.
 impl ValidateRequest for NvCreateChatCompletionRequest {
-    fn validate(&self) -> Result<(), anyhow::Error> {
+    fn validate_fields(&self) -> Result<(), anyhow::Error> {
         validate::validate_messages(&self.inner.messages)?;
         validate::validate_model(&self.inner.model)?;
         // none for store
@@ -219,20 +219,20 @@ impl ValidateRequest for NvCreateChatCompletionRequest {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use async_openai::types::{CreateChatCompletionRequestArgs, ChatCompletionRequestMessage};
+    use async_openai::types::{ChatCompletionRequestMessage, CreateChatCompletionRequestArgs};
 
     #[test]
-    fn test_validate_request_integration_valid() {
+    fn test_validate_request_basic_valid() {
         let request = CreateChatCompletionRequestArgs::default()
             .model("gpt-3.5-turbo")
-            .messages(vec![
-                ChatCompletionRequestMessage::User(
-                    async_openai::types::ChatCompletionRequestUserMessage {
-                        content: async_openai::types::ChatCompletionRequestUserMessageContent::Text("Hello".to_string()),
-                        name: None,
-                    }
-                )
-            ])
+            .messages(vec![ChatCompletionRequestMessage::User(
+                async_openai::types::ChatCompletionRequestUserMessage {
+                    content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
+                        "Hello".to_string(),
+                    ),
+                    name: None,
+                },
+            )])
             .build()
             .unwrap();
 
@@ -241,22 +241,22 @@ mod tests {
             nvext: None,
         };
 
-        let result = nv_request.validate();
+        let result = nv_request.validate_fields();
         assert!(result.is_ok());
     }
 
     #[test]
-    fn test_validate_request_integration_invalid() {
+    fn test_validate_request_basic_invalid() {
         let request = CreateChatCompletionRequestArgs::default()
             .model("") // Invalid empty model - should trigger validate::validate_model error
-            .messages(vec![
-                ChatCompletionRequestMessage::User(
-                    async_openai::types::ChatCompletionRequestUserMessage {
-                        content: async_openai::types::ChatCompletionRequestUserMessageContent::Text("Hello".to_string()),
-                        name: None,
-                    }
-                )
-            ])
+            .messages(vec![ChatCompletionRequestMessage::User(
+                async_openai::types::ChatCompletionRequestUserMessage {
+                    content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
+                        "Hello".to_string(),
+                    ),
+                    name: None,
+                },
+            )])
             .build()
             .unwrap();
 
@@ -265,29 +265,27 @@ mod tests {
             nvext: None,
         };
 
-        let result = nv_request.validate();
+        let result = nv_request.validate_fields();
         assert!(result.is_err());
     }
 
     #[test]
     fn test_validate_request_calls_all_validation_functions() {
-        // Test that validate() calls the underlying validation functions
-        // This ensures the integration works correctly
         let request = CreateChatCompletionRequestArgs::default()
             .model("gpt-3.5-turbo")
-            .messages(vec![
-                ChatCompletionRequestMessage::User(
-                    async_openai::types::ChatCompletionRequestUserMessage {
-                        content: async_openai::types::ChatCompletionRequestUserMessageContent::Text("Hello".to_string()),
-                        name: None,
-                    }
-                )
-            ])
+            .messages(vec![ChatCompletionRequestMessage::User(
+                async_openai::types::ChatCompletionRequestUserMessage {
+                    content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
+                        "Hello".to_string(),
+                    ),
+                    name: None,
+                },
+            )])
             .temperature(0.7)
             .top_p(0.9)
             .frequency_penalty(0.1)
             .presence_penalty(0.1)
-            .max_completion_tokens(100)
+            .max_completion_tokens(100u32)
             .n(1)
             .build()
             .unwrap();
@@ -297,8 +295,7 @@ mod tests {
             nvext: None,
         };
 
-        // This should succeed and exercise all validation paths
-        let result = nv_request.validate();
+        let result = nv_request.validate_fields();
         assert!(result.is_ok());
     }
 }
