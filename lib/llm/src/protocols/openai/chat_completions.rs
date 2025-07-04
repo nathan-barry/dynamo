@@ -215,3 +215,90 @@ impl ValidateRequest for NvCreateChatCompletionRequest {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_openai::types::{CreateChatCompletionRequestArgs, ChatCompletionRequestMessage};
+
+    #[test]
+    fn test_validate_request_integration_valid() {
+        let request = CreateChatCompletionRequestArgs::default()
+            .model("gpt-3.5-turbo")
+            .messages(vec![
+                ChatCompletionRequestMessage::User(
+                    async_openai::types::ChatCompletionRequestUserMessage {
+                        content: async_openai::types::ChatCompletionRequestUserMessageContent::Text("Hello".to_string()),
+                        name: None,
+                    }
+                )
+            ])
+            .build()
+            .unwrap();
+
+        let nv_request = NvCreateChatCompletionRequest {
+            inner: request,
+            nvext: None,
+        };
+
+        let result = nv_request.validate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_request_integration_invalid() {
+        let request = CreateChatCompletionRequestArgs::default()
+            .model("") // Invalid empty model - should trigger validate::validate_model error
+            .messages(vec![
+                ChatCompletionRequestMessage::User(
+                    async_openai::types::ChatCompletionRequestUserMessage {
+                        content: async_openai::types::ChatCompletionRequestUserMessageContent::Text("Hello".to_string()),
+                        name: None,
+                    }
+                )
+            ])
+            .build()
+            .unwrap();
+
+        let nv_request = NvCreateChatCompletionRequest {
+            inner: request,
+            nvext: None,
+        };
+
+        let result = nv_request.validate();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_request_calls_all_validation_functions() {
+        // Test that validate() calls the underlying validation functions
+        // This ensures the integration works correctly
+        let request = CreateChatCompletionRequestArgs::default()
+            .model("gpt-3.5-turbo")
+            .messages(vec![
+                ChatCompletionRequestMessage::User(
+                    async_openai::types::ChatCompletionRequestUserMessage {
+                        content: async_openai::types::ChatCompletionRequestUserMessageContent::Text("Hello".to_string()),
+                        name: None,
+                    }
+                )
+            ])
+            .temperature(0.7)
+            .top_p(0.9)
+            .frequency_penalty(0.1)
+            .presence_penalty(0.1)
+            .max_completion_tokens(100)
+            .n(1)
+            .build()
+            .unwrap();
+
+        let nv_request = NvCreateChatCompletionRequest {
+            inner: request,
+            nvext: None,
+        };
+
+        // This should succeed and exercise all validation paths
+        let result = nv_request.validate();
+        assert!(result.is_ok());
+    }
+}

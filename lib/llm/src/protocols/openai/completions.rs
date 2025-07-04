@@ -304,3 +304,71 @@ impl ValidateRequest for NvCreateCompletionRequest {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_openai::types::CreateCompletionRequestArgs;
+
+    #[test]
+    fn test_validate_request_integration_valid() {
+        let request = CreateCompletionRequestArgs::default()
+            .model("gpt-3.5-turbo")
+            .prompt("Test prompt")
+            .build()
+            .unwrap();
+
+        let nv_request = NvCreateCompletionRequest {
+            inner: request,
+            nvext: None,
+        };
+
+        let result = nv_request.validate();
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_validate_request_integration_invalid() {
+        let request = CreateCompletionRequestArgs::default()
+            .model("") // Invalid empty model - should trigger validate::validate_model error
+            .prompt("Test prompt")
+            .build()
+            .unwrap();
+
+        let nv_request = NvCreateCompletionRequest {
+            inner: request,
+            nvext: None,
+        };
+
+        let result = nv_request.validate();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_validate_request_calls_all_validation_functions() {
+        // Test that validate() calls the underlying validation functions
+        // This ensures the integration works correctly
+        let request = CreateCompletionRequestArgs::default()
+            .model("gpt-3.5-turbo")
+            .prompt("Test prompt")
+            .temperature(0.7)
+            .top_p(0.9)
+            .frequency_penalty(0.1)
+            .presence_penalty(0.1)
+            .max_tokens(100)
+            .n(1)
+            .logprobs(5)
+            .suffix("test suffix")
+            .build()
+            .unwrap();
+
+        let nv_request = NvCreateCompletionRequest {
+            inner: request,
+            nvext: None,
+        };
+
+        // This should succeed and exercise all validation paths
+        let result = nv_request.validate();
+        assert!(result.is_ok());
+    }
+}

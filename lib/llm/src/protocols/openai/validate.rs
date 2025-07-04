@@ -527,3 +527,438 @@ where
     }
     Ok(Some(value))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use async_openai::types::{
+        ChatCompletionRequestMessage, Prompt, ReasoningEffort, ServiceTier, Stop,
+    };
+    use std::collections::HashMap;
+
+    #[test]
+    fn test_validate_temperature_valid() {
+        assert!(validate_temperature(None).is_ok());
+        assert!(validate_temperature(Some(0.0)).is_ok());
+        assert!(validate_temperature(Some(1.0)).is_ok());
+        assert!(validate_temperature(Some(2.0)).is_ok());
+        assert!(validate_temperature(Some(0.7)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_temperature_invalid() {
+        assert!(validate_temperature(Some(-0.1)).is_err());
+        assert!(validate_temperature(Some(2.1)).is_err());
+        assert!(validate_temperature(Some(-1.0)).is_err());
+        assert!(validate_temperature(Some(3.0)).is_err());
+    }
+
+    #[test]
+    fn test_validate_top_p_valid() {
+        assert!(validate_top_p(None).is_ok());
+        assert!(validate_top_p(Some(0.0)).is_ok());
+        assert!(validate_top_p(Some(0.5)).is_ok());
+        assert!(validate_top_p(Some(1.0)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_top_p_invalid() {
+        assert!(validate_top_p(Some(-0.1)).is_err());
+        assert!(validate_top_p(Some(1.1)).is_err());
+        assert!(validate_top_p(Some(-1.0)).is_err());
+        assert!(validate_top_p(Some(2.0)).is_err());
+    }
+
+    #[test]
+    fn test_validate_temperature_top_p_exclusion_valid() {
+        assert!(validate_temperature_top_p_exclusion(None, None).is_ok());
+        assert!(validate_temperature_top_p_exclusion(Some(0.7), None).is_ok());
+        assert!(validate_temperature_top_p_exclusion(None, Some(0.9)).is_ok());
+        assert!(validate_temperature_top_p_exclusion(Some(1.0), Some(0.9)).is_ok());
+        assert!(validate_temperature_top_p_exclusion(Some(0.7), Some(1.0)).is_ok());
+        assert!(validate_temperature_top_p_exclusion(Some(1.0), Some(1.0)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_temperature_top_p_exclusion_invalid() {
+        assert!(validate_temperature_top_p_exclusion(Some(0.7), Some(0.9)).is_err());
+        assert!(validate_temperature_top_p_exclusion(Some(0.5), Some(0.5)).is_err());
+    }
+
+    #[test]
+    fn test_validate_frequency_penalty_valid() {
+        assert!(validate_frequency_penalty(None).is_ok());
+        assert!(validate_frequency_penalty(Some(-2.0)).is_ok());
+        assert!(validate_frequency_penalty(Some(0.0)).is_ok());
+        assert!(validate_frequency_penalty(Some(2.0)).is_ok());
+        assert!(validate_frequency_penalty(Some(0.5)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_frequency_penalty_invalid() {
+        assert!(validate_frequency_penalty(Some(-2.1)).is_err());
+        assert!(validate_frequency_penalty(Some(2.1)).is_err());
+        assert!(validate_frequency_penalty(Some(-5.0)).is_err());
+        assert!(validate_frequency_penalty(Some(5.0)).is_err());
+    }
+
+    #[test]
+    fn test_validate_presence_penalty_valid() {
+        assert!(validate_presence_penalty(None).is_ok());
+        assert!(validate_presence_penalty(Some(-2.0)).is_ok());
+        assert!(validate_presence_penalty(Some(0.0)).is_ok());
+        assert!(validate_presence_penalty(Some(2.0)).is_ok());
+        assert!(validate_presence_penalty(Some(1.5)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_presence_penalty_invalid() {
+        assert!(validate_presence_penalty(Some(-2.1)).is_err());
+        assert!(validate_presence_penalty(Some(2.1)).is_err());
+        assert!(validate_presence_penalty(Some(-3.0)).is_err());
+        assert!(validate_presence_penalty(Some(3.0)).is_err());
+    }
+
+    #[test]
+    fn test_validate_logit_bias_valid() {
+        assert!(validate_logit_bias(&None).is_ok());
+
+        let mut valid_bias = HashMap::new();
+        valid_bias.insert(
+            "50256".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(-100)),
+        );
+        valid_bias.insert(
+            "198".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(100)),
+        );
+        valid_bias.insert(
+            "42".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(0)),
+        );
+        assert!(validate_logit_bias(&Some(valid_bias)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_logit_bias_invalid() {
+        let mut invalid_bias = HashMap::new();
+        invalid_bias.insert(
+            "50256".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(-101)),
+        );
+        assert!(validate_logit_bias(&Some(invalid_bias)).is_err());
+
+        let mut invalid_bias2 = HashMap::new();
+        invalid_bias2.insert(
+            "50256".to_string(),
+            serde_json::Value::Number(serde_json::Number::from(101)),
+        );
+        assert!(validate_logit_bias(&Some(invalid_bias2)).is_err());
+
+        let mut invalid_bias3 = HashMap::new();
+        invalid_bias3.insert(
+            "50256".to_string(),
+            serde_json::Value::String("invalid".to_string()),
+        );
+        assert!(validate_logit_bias(&Some(invalid_bias3)).is_err());
+    }
+
+    #[test]
+    fn test_validate_n_valid() {
+        assert!(validate_n(None).is_ok());
+        assert!(validate_n(Some(1)).is_ok());
+        assert!(validate_n(Some(64)).is_ok());
+        assert!(validate_n(Some(128)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_n_invalid() {
+        assert!(validate_n(Some(0)).is_err());
+        assert!(validate_n(Some(129)).is_err());
+        assert!(validate_n(Some(255)).is_err());
+    }
+
+    #[test]
+    fn test_validate_model_valid() {
+        assert!(validate_model("gpt-3.5-turbo").is_ok());
+        assert!(validate_model("gpt-4").is_ok());
+        assert!(validate_model("claude-3").is_ok());
+        assert!(validate_model("  model-with-spaces  ").is_ok()); // trimmed
+    }
+
+    #[test]
+    fn test_validate_model_invalid() {
+        assert!(validate_model("").is_err());
+        assert!(validate_model("   ").is_err()); // only whitespace
+        assert!(validate_model("\t\n").is_err()); // only whitespace
+    }
+
+    #[test]
+    fn test_validate_user_valid() {
+        assert!(validate_user(None).is_ok());
+        assert!(validate_user(Some("user123")).is_ok());
+        assert!(validate_user(Some("user@example.com")).is_ok());
+    }
+
+    #[test]
+    fn test_validate_user_invalid() {
+        assert!(validate_user(Some("")).is_err());
+        assert!(validate_user(Some("   ")).is_err());
+        assert!(validate_user(Some("\t")).is_err());
+    }
+
+    #[test]
+    fn test_validate_stop_valid() {
+        assert!(validate_stop(&None).is_ok());
+        assert!(validate_stop(&Some(Stop::String("STOP".to_string()))).is_ok());
+        assert!(validate_stop(&Some(Stop::StringArray(vec![
+            "STOP".to_string(),
+            "END".to_string()
+        ])))
+        .is_ok());
+        assert!(validate_stop(&Some(Stop::StringArray(vec![
+            "A".to_string(),
+            "B".to_string(),
+            "C".to_string(),
+            "D".to_string()
+        ])))
+        .is_ok());
+    }
+
+    #[test]
+    fn test_validate_stop_invalid() {
+        assert!(validate_stop(&Some(Stop::String("".to_string()))).is_err());
+        assert!(validate_stop(&Some(Stop::StringArray(vec![]))).is_err());
+        assert!(validate_stop(&Some(Stop::StringArray(vec![
+            "A".to_string(),
+            "".to_string()
+        ])))
+        .is_err());
+        assert!(validate_stop(&Some(Stop::StringArray(vec![
+            "A".to_string(),
+            "B".to_string(),
+            "C".to_string(),
+            "D".to_string(),
+            "E".to_string()
+        ])))
+        .is_err()); // Too many
+    }
+
+    #[test]
+    fn test_validate_messages_valid() {
+        let messages = vec![ChatCompletionRequestMessage::User(
+            async_openai::types::ChatCompletionRequestUserMessage {
+                content: async_openai::types::ChatCompletionRequestUserMessageContent::Text(
+                    "Hello".to_string(),
+                ),
+                name: None,
+            },
+        )];
+        assert!(validate_messages(&messages).is_ok());
+    }
+
+    #[test]
+    fn test_validate_messages_invalid() {
+        assert!(validate_messages(&[]).is_err());
+    }
+
+    #[test]
+    fn test_validate_top_logprobs_valid() {
+        assert!(validate_top_logprobs(None).is_ok());
+        assert!(validate_top_logprobs(Some(0)).is_ok());
+        assert!(validate_top_logprobs(Some(10)).is_ok());
+        assert!(validate_top_logprobs(Some(20)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_top_logprobs_invalid() {
+        assert!(validate_top_logprobs(Some(21)).is_err());
+        assert!(validate_top_logprobs(Some(255)).is_err());
+    }
+
+    #[test]
+    fn test_validate_metadata_valid() {
+        assert!(validate_metadata(&None).is_ok());
+
+        let metadata = serde_json::json!({
+            "user_id": "123",
+            "session": "abc"
+        });
+        assert!(validate_metadata(&Some(metadata)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_metadata_invalid() {
+        let too_many_pairs: serde_json::Value = serde_json::json!({
+            "key1": "value1", "key2": "value2", "key3": "value3", "key4": "value4",
+            "key5": "value5", "key6": "value6", "key7": "value7", "key8": "value8",
+            "key9": "value9", "key10": "value10", "key11": "value11", "key12": "value12",
+            "key13": "value13", "key14": "value14", "key15": "value15", "key16": "value16",
+            "key17": "value17" // 17 pairs, max is 16
+        });
+        assert!(validate_metadata(&Some(too_many_pairs)).is_err());
+
+        let long_key = serde_json::json!({
+            "a".repeat(65): "value" // Key too long
+        });
+        assert!(validate_metadata(&Some(long_key)).is_err());
+
+        let long_value = serde_json::json!({
+            "key": "a".repeat(513) // Value too long
+        });
+        assert!(validate_metadata(&Some(long_value)).is_err());
+    }
+
+    #[test]
+    fn test_validate_reasoning_effort() {
+        assert!(validate_reasoning_effort(&None).is_ok());
+        assert!(validate_reasoning_effort(&Some(ReasoningEffort::Low)).is_ok());
+        assert!(validate_reasoning_effort(&Some(ReasoningEffort::Medium)).is_ok());
+        assert!(validate_reasoning_effort(&Some(ReasoningEffort::High)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_service_tier() {
+        assert!(validate_service_tier(&None).is_ok());
+        assert!(validate_service_tier(&Some(ServiceTier::Auto)).is_ok());
+        assert!(validate_service_tier(&Some(ServiceTier::Default)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_prompt_valid() {
+        assert!(validate_prompt(&Prompt::String("Hello world".to_string())).is_ok());
+        assert!(validate_prompt(&Prompt::StringArray(vec![
+            "Hello".to_string(),
+            "world".to_string()
+        ]))
+        .is_ok());
+        assert!(validate_prompt(&Prompt::IntegerArray(vec![1, 2, 3, 4, 50256])).is_ok());
+        assert!(
+            validate_prompt(&Prompt::ArrayOfIntegerArray(vec![vec![1, 2], vec![3, 4]])).is_ok()
+        );
+    }
+
+    #[test]
+    fn test_validate_prompt_invalid() {
+        assert!(validate_prompt(&Prompt::String("".to_string())).is_err());
+        assert!(validate_prompt(&Prompt::StringArray(vec![])).is_err());
+        assert!(validate_prompt(&Prompt::StringArray(vec![
+            "Hello".to_string(),
+            "".to_string()
+        ]))
+        .is_err());
+        assert!(validate_prompt(&Prompt::IntegerArray(vec![])).is_err());
+        assert!(validate_prompt(&Prompt::IntegerArray(vec![1, 2, 50257])).is_err()); // Token ID too high
+        assert!(validate_prompt(&Prompt::ArrayOfIntegerArray(vec![])).is_err());
+        assert!(validate_prompt(&Prompt::ArrayOfIntegerArray(vec![vec![]])).is_err());
+        assert!(validate_prompt(&Prompt::ArrayOfIntegerArray(vec![vec![1, 50257]])).is_err());
+        // Token ID too high
+    }
+
+    #[test]
+    fn test_validate_logprobs_valid() {
+        assert!(validate_logprobs(None).is_ok());
+        assert!(validate_logprobs(Some(0)).is_ok());
+        assert!(validate_logprobs(Some(3)).is_ok());
+        assert!(validate_logprobs(Some(5)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_logprobs_invalid() {
+        assert!(validate_logprobs(Some(6)).is_err());
+        assert!(validate_logprobs(Some(10)).is_err());
+        assert!(validate_logprobs(Some(255)).is_err());
+    }
+
+    #[test]
+    fn test_validate_best_of_valid() {
+        assert!(validate_best_of(None, None).is_ok());
+        assert!(validate_best_of(Some(1), Some(1)).is_ok());
+        assert!(validate_best_of(Some(5), Some(3)).is_ok());
+        assert!(validate_best_of(Some(10), None).is_ok());
+        assert!(validate_best_of(Some(0), None).is_ok()); // Edge case: 0 is allowed
+    }
+
+    #[test]
+    fn test_validate_best_of_invalid() {
+        assert!(validate_best_of(Some(21), None).is_err()); // Too high
+        assert!(validate_best_of(Some(3), Some(5)).is_err()); // best_of < n
+        assert!(validate_best_of(Some(255), None).is_err());
+    }
+
+    #[test]
+    fn test_validate_suffix_valid() {
+        assert!(validate_suffix(None).is_ok());
+        assert!(validate_suffix(Some("")).is_ok()); // Empty is allowed
+        assert!(validate_suffix(Some("test suffix")).is_ok());
+        assert!(validate_suffix(Some(&"a".repeat(10000))).is_ok()); // At limit
+    }
+
+    #[test]
+    fn test_validate_suffix_invalid() {
+        assert!(validate_suffix(Some(&"a".repeat(10001))).is_err()); // Too long
+    }
+
+    #[test]
+    fn test_validate_max_tokens_valid() {
+        assert!(validate_max_tokens(None).is_ok());
+        assert!(validate_max_tokens(Some(1)).is_ok());
+        assert!(validate_max_tokens(Some(100)).is_ok());
+        assert!(validate_max_tokens(Some(4096)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_max_tokens_invalid() {
+        assert!(validate_max_tokens(Some(0)).is_err());
+    }
+
+    #[test]
+    fn test_validate_max_completion_tokens_valid() {
+        assert!(validate_max_completion_tokens(None).is_ok());
+        assert!(validate_max_completion_tokens(Some(1)).is_ok());
+        assert!(validate_max_completion_tokens(Some(100)).is_ok());
+        assert!(validate_max_completion_tokens(Some(4096)).is_ok());
+    }
+
+    #[test]
+    fn test_validate_max_completion_tokens_invalid() {
+        assert!(validate_max_completion_tokens(Some(0)).is_err());
+    }
+
+    #[test]
+    fn test_validate_range_valid() {
+        assert_eq!(validate_range(None::<f32>, &(0.0, 1.0)).unwrap(), None);
+        assert_eq!(validate_range(Some(0.5), &(0.0, 1.0)).unwrap(), Some(0.5));
+        assert_eq!(validate_range(Some(0.0), &(0.0, 1.0)).unwrap(), Some(0.0));
+        assert_eq!(validate_range(Some(1.0), &(0.0, 1.0)).unwrap(), Some(1.0));
+    }
+
+    #[test]
+    fn test_validate_range_invalid() {
+        assert!(validate_range(Some(-0.1), &(0.0, 1.0)).is_err());
+        assert!(validate_range(Some(1.1), &(0.0, 1.0)).is_err());
+        assert!(validate_range(Some(-1.0), &(0.0, 1.0)).is_err());
+        assert!(validate_range(Some(2.0), &(0.0, 1.0)).is_err());
+    }
+
+    #[test]
+    fn test_boundary_values() {
+        // Test exact boundary values
+        assert!(validate_temperature(Some(MIN_TEMPERATURE)).is_ok());
+        assert!(validate_temperature(Some(MAX_TEMPERATURE)).is_ok());
+        assert!(validate_top_p(Some(MIN_TOP_P)).is_ok());
+        assert!(validate_top_p(Some(MAX_TOP_P)).is_ok());
+        assert!(validate_frequency_penalty(Some(MIN_FREQUENCY_PENALTY)).is_ok());
+        assert!(validate_frequency_penalty(Some(MAX_FREQUENCY_PENALTY)).is_ok());
+        assert!(validate_presence_penalty(Some(MIN_PRESENCE_PENALTY)).is_ok());
+        assert!(validate_presence_penalty(Some(MAX_PRESENCE_PENALTY)).is_ok());
+        assert!(validate_n(Some(MIN_N)).is_ok());
+        assert!(validate_n(Some(MAX_N)).is_ok());
+        assert!(validate_logprobs(Some(MIN_LOGPROBS)).is_ok());
+        assert!(validate_logprobs(Some(MAX_LOGPROBS)).is_ok());
+        assert!(validate_top_logprobs(Some(MIN_TOP_LOGPROBS)).is_ok());
+        assert!(validate_top_logprobs(Some(MAX_TOP_LOGPROBS)).is_ok());
+        assert!(validate_best_of(Some(MIN_BEST_OF), None).is_ok());
+        assert!(validate_best_of(Some(MAX_BEST_OF), None).is_ok());
+    }
+}
