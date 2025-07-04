@@ -98,10 +98,7 @@ pub fn validate_temperature(temperature: Option<f32>) -> Result<(), anyhow::Erro
     if let Some(temp) = temperature {
         if !(MIN_TEMPERATURE..=MAX_TEMPERATURE).contains(&temp) {
             anyhow::bail!(
-                "Temperature must be between {} and {}, got {}",
-                MIN_TEMPERATURE,
-                MAX_TEMPERATURE,
-                temp
+                "Temperature must be between {MIN_TEMPERATURE} and {MAX_TEMPERATURE}, got {temp}"
             );
         }
     }
@@ -112,12 +109,7 @@ pub fn validate_temperature(temperature: Option<f32>) -> Result<(), anyhow::Erro
 pub fn validate_top_p(top_p: Option<f32>) -> Result<(), anyhow::Error> {
     if let Some(p) = top_p {
         if !(MIN_TOP_P..=MAX_TOP_P).contains(&p) {
-            anyhow::bail!(
-                "Top_p must be between {} and {}, got {}",
-                MIN_TOP_P,
-                MAX_TOP_P,
-                p
-            );
+            anyhow::bail!("Top_p must be between {MIN_TOP_P} and {MAX_TOP_P}, got {p}",);
         }
     }
     Ok(())
@@ -141,10 +133,7 @@ pub fn validate_frequency_penalty(frequency_penalty: Option<f32>) -> Result<(), 
     if let Some(penalty) = frequency_penalty {
         if !(MIN_FREQUENCY_PENALTY..=MAX_FREQUENCY_PENALTY).contains(&penalty) {
             anyhow::bail!(
-                "Frequency penalty must be between {} and {}, got {}",
-                MIN_FREQUENCY_PENALTY,
-                MAX_FREQUENCY_PENALTY,
-                penalty
+                "Frequency penalty must be between {MIN_FREQUENCY_PENALTY} and {MAX_FREQUENCY_PENALTY}, got {penalty}",
             );
         }
     }
@@ -156,10 +145,7 @@ pub fn validate_presence_penalty(presence_penalty: Option<f32>) -> Result<(), an
     if let Some(penalty) = presence_penalty {
         if !(MIN_PRESENCE_PENALTY..=MAX_PRESENCE_PENALTY).contains(&penalty) {
             anyhow::bail!(
-                "Presence penalty must be between {} and {}, got {}",
-                MIN_PRESENCE_PENALTY,
-                MAX_PRESENCE_PENALTY,
-                penalty
+                "Presence penalty must be between {MIN_PRESENCE_PENALTY} and {MAX_PRESENCE_PENALTY}, got {penalty}",
             );
         }
     }
@@ -178,19 +164,13 @@ pub fn validate_logit_bias(
     for (token, bias_value) in logit_bias {
         let bias = bias_value.as_f64().ok_or_else(|| {
             anyhow::anyhow!(
-                "Logit bias value for token '{}' must be a number, got {:?}",
-                token,
-                bias_value
+                "Logit bias value for token '{token}' must be a number, got {bias_value}",
             )
         })? as f32;
 
         if !(MIN_LOGIT_BIAS..=MAX_LOGIT_BIAS).contains(&bias) {
             anyhow::bail!(
-                "Logit bias for token '{}' must be between {} and {}, got {}",
-                token,
-                MIN_LOGIT_BIAS,
-                MAX_LOGIT_BIAS,
-                bias
+                "Logit bias for token '{token}' must be between {MIN_LOGIT_BIAS} and {MAX_LOGIT_BIAS}, got {bias}",
             );
         }
     }
@@ -201,7 +181,7 @@ pub fn validate_logit_bias(
 pub fn validate_n(n: Option<u8>) -> Result<(), anyhow::Error> {
     if let Some(value) = n {
         if !(MIN_N..=MAX_N).contains(&value) {
-            anyhow::bail!("n must be between {} and {}, got {}", MIN_N, MAX_N, value);
+            anyhow::bail!("n must be between {MIN_N} and {MAX_N}, got {value}");
         }
     }
     Ok(())
@@ -247,7 +227,7 @@ pub fn validate_stop(stop: &Option<async_openai::types::Stop>) -> Result<(), any
                 }
                 for (i, sequence) in sequences.iter().enumerate() {
                     if sequence.is_empty() {
-                        anyhow::bail!("Stop sequence at index {} cannot be empty", i);
+                        anyhow::bail!("Stop sequence at index {i} cannot be empty");
                     }
                 }
             }
@@ -274,11 +254,7 @@ pub fn validate_messages(
 pub fn validate_top_logprobs(top_logprobs: Option<u8>) -> Result<(), anyhow::Error> {
     if let Some(value) = top_logprobs {
         if !(0..=20).contains(&value) {
-            anyhow::bail!(
-                "Top_logprobs must be between 0 and {}, got {}",
-                MAX_TOP_LOGPROBS,
-                value
-            );
+            anyhow::bail!("Top_logprobs must be between 0 and {MAX_TOP_LOGPROBS}, got {value}");
         }
     }
     Ok(())
@@ -311,7 +287,7 @@ pub fn validate_tools(
             );
         }
         if tool.function.name.trim().is_empty() {
-            anyhow::bail!("Function name at index {} cannot be empty", i);
+            anyhow::bail!("Function name at index {i} cannot be empty");
         }
     }
     Ok(())
@@ -324,32 +300,27 @@ pub fn validate_metadata(metadata: &Option<serde_json::Value>) -> Result<(), any
         None => return Ok(()),
     };
 
-    if let Some(obj) = metadata.as_object() {
-        if obj.len() > MAX_METADATA_PAIRS {
-            anyhow::bail!(
-                "Metadata cannot have more than {} key-value pairs, got {}",
-                MAX_METADATA_PAIRS,
-                obj.len()
-            );
+    let Some(obj) = metadata.as_object() else {
+        return Ok(());
+    };
+    if obj.len() > MAX_METADATA_PAIRS {
+        anyhow::bail!(
+            "Metadata cannot have more than {} key-value pairs, got {}",
+            MAX_METADATA_PAIRS,
+            obj.len()
+        );
+    }
+
+    for (key, value) in obj {
+        if key.len() > MAX_METADATA_KEY_LENGTH {
+            anyhow::bail!("Metadata key '{key}' exceeds {MAX_METADATA_KEY_LENGTH} character limit",);
         }
 
-        for (key, value) in obj {
-            if key.len() > MAX_METADATA_KEY_LENGTH {
+        if let Some(value_str) = value.as_str() {
+            if value_str.len() > MAX_METADATA_VALUE_LENGTH {
                 anyhow::bail!(
-                    "Metadata key '{}' exceeds {} character limit",
-                    key,
-                    MAX_METADATA_KEY_LENGTH
+                    "Metadata value for key '{key}' exceeds {MAX_METADATA_VALUE_LENGTH} character limit",
                 );
-            }
-
-            if let Some(value_str) = value.as_str() {
-                if value_str.len() > MAX_METADATA_VALUE_LENGTH {
-                    anyhow::bail!(
-                        "Metadata value for key '{}' exceeds {} character limit",
-                        key,
-                        MAX_METADATA_VALUE_LENGTH
-                    );
-                }
             }
         }
     }
@@ -392,7 +363,7 @@ pub fn validate_prompt(prompt: &async_openai::types::Prompt) -> Result<(), anyho
             }
             for (i, s) in arr.iter().enumerate() {
                 if s.is_empty() {
-                    anyhow::bail!("Prompt string at index {} cannot be empty", i);
+                    anyhow::bail!("Prompt string at index {i} cannot be empty");
                 }
             }
         }
@@ -403,10 +374,7 @@ pub fn validate_prompt(prompt: &async_openai::types::Prompt) -> Result<(), anyho
             for (i, &token_id) in arr.iter().enumerate() {
                 if token_id > MAX_PROMPT_TOKEN_ID {
                     anyhow::bail!(
-                        "Token ID at index {} must be between 0 and {}, got {}",
-                        i,
-                        MAX_PROMPT_TOKEN_ID,
-                        token_id
+                        "Token ID at index {i} must be between 0 and {MAX_PROMPT_TOKEN_ID}, got {token_id}",
                     );
                 }
             }
@@ -422,11 +390,7 @@ pub fn validate_prompt(prompt: &async_openai::types::Prompt) -> Result<(), anyho
                 for (j, &token_id) in inner_arr.iter().enumerate() {
                     if token_id > MAX_PROMPT_TOKEN_ID {
                         anyhow::bail!(
-                            "Token ID at index [{}][{}] must be between 0 and {}, got {}",
-                            i,
-                            j,
-                            MAX_PROMPT_TOKEN_ID,
-                            token_id
+                            "Token ID at index [{i}][{j}] must be between 0 and {MAX_PROMPT_TOKEN_ID}, got {token_id}",
                         );
                     }
                 }
@@ -440,11 +404,7 @@ pub fn validate_prompt(prompt: &async_openai::types::Prompt) -> Result<(), anyho
 pub fn validate_logprobs(logprobs: Option<u8>) -> Result<(), anyhow::Error> {
     if let Some(value) = logprobs {
         if !(MIN_LOGPROBS..=MAX_LOGPROBS).contains(&value) {
-            anyhow::bail!(
-                "Logprobs must be between 0 and {}, got {}",
-                MAX_LOGPROBS,
-                value
-            );
+            anyhow::bail!("Logprobs must be between 0 and {MAX_LOGPROBS}, got {value}",);
         }
     }
     Ok(())
@@ -454,19 +414,13 @@ pub fn validate_logprobs(logprobs: Option<u8>) -> Result<(), anyhow::Error> {
 pub fn validate_best_of(best_of: Option<u8>, n: Option<u8>) -> Result<(), anyhow::Error> {
     if let Some(best_of_value) = best_of {
         if !(MIN_BEST_OF..=MAX_BEST_OF).contains(&best_of_value) {
-            anyhow::bail!(
-                "Best_of must be between 0 and {}, got {}",
-                MAX_BEST_OF,
-                best_of_value
-            );
+            anyhow::bail!("Best_of must be between 0 and {MAX_BEST_OF}, got {best_of_value}",);
         }
 
         if let Some(n_value) = n {
             if best_of_value < n_value {
                 anyhow::bail!(
-                    "Best_of must be greater than or equal to n, got best_of={} and n={}",
-                    best_of_value,
-                    n_value
+                    "Best_of must be greater than or equal to n, got best_of={best_of_value} and n={n_value}",
                 );
             }
         }
@@ -488,7 +442,7 @@ pub fn validate_suffix(suffix: Option<&str>) -> Result<(), anyhow::Error> {
 pub fn validate_max_tokens(max_tokens: Option<u32>) -> Result<(), anyhow::Error> {
     if let Some(tokens) = max_tokens {
         if tokens == 0 {
-            anyhow::bail!("Max tokens must be greater than 0, got {}", tokens);
+            anyhow::bail!("Max tokens must be greater than 0, got {tokens}");
         }
     }
     Ok(())
@@ -500,10 +454,7 @@ pub fn validate_max_completion_tokens(
 ) -> Result<(), anyhow::Error> {
     if let Some(tokens) = max_completion_tokens {
         if tokens == 0 {
-            anyhow::bail!(
-                "Max completion tokens must be greater than 0, got {}",
-                tokens
-            );
+            anyhow::bail!("Max completion tokens must be greater than 0, got {tokens}");
         }
     }
     Ok(())
