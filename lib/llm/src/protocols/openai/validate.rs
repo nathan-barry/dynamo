@@ -76,6 +76,8 @@ pub const MAX_BEST_OF: u8 = 20;
 pub const MAX_STOP_SEQUENCES: usize = 4;
 /// Maximum allowed number of tools
 pub const MAX_TOOLS: usize = 128;
+/// Maximum length of model name suffix
+pub const MAX_SUFFIX_LEN: usize = 64;
 /// Maximum allowed number of metadata key-value pairs
 pub const MAX_METADATA_PAIRS: usize = 16;
 /// Maximum allowed length for metadata keys
@@ -358,7 +360,6 @@ pub fn validate_metadata(metadata: &Option<serde_json::Value>) -> Result<(), any
 pub fn validate_reasoning_effort(
     _reasoning_effort: &Option<async_openai::types::ReasoningEffort>,
 ) -> Result<(), anyhow::Error> {
-    // TODO ADD HERE
     // ReasoningEffort is an enum, so if it exists, it's valid by definition
     // This function is here for completeness and future validation needs
     Ok(())
@@ -368,7 +369,6 @@ pub fn validate_reasoning_effort(
 pub fn validate_service_tier(
     _service_tier: &Option<async_openai::types::ServiceTier>,
 ) -> Result<(), anyhow::Error> {
-    // TODO ADD HERE
     // ServiceTier is an enum, so if it exists, it's valid by definition
     // This function is here for completeness and future validation needs
     Ok(())
@@ -477,9 +477,8 @@ pub fn validate_best_of(best_of: Option<u8>, n: Option<u8>) -> Result<(), anyhow
 /// Validates suffix parameter
 pub fn validate_suffix(suffix: Option<&str>) -> Result<(), anyhow::Error> {
     if let Some(suffix_str) = suffix {
-        // Suffix can be empty, but if it's very long it might cause issues
-        if suffix_str.len() > 10000 {
-            anyhow::bail!("Suffix is too long, maximum 10000 characters");
+        if suffix_str.len() > MAX_SUFFIX_LEN {
+            anyhow::bail!("Suffix is too long, maximum of {MAX_SUFFIX_LEN} characters");
         }
     }
     Ok(())
@@ -875,7 +874,7 @@ mod tests {
         assert!(validate_best_of(None, None).is_ok());
         assert!(validate_best_of(Some(1), Some(1)).is_ok());
         assert!(validate_best_of(Some(5), Some(3)).is_ok());
-        assert!(validate_best_of(Some(10), None).is_ok());
+        assert!(validate_best_of(Some(20), None).is_ok());
         assert!(validate_best_of(Some(0), None).is_ok()); // Edge case: 0 is allowed
     }
 
@@ -891,12 +890,12 @@ mod tests {
         assert!(validate_suffix(None).is_ok());
         assert!(validate_suffix(Some("")).is_ok()); // Empty is allowed
         assert!(validate_suffix(Some("test suffix")).is_ok());
-        assert!(validate_suffix(Some(&"a".repeat(10000))).is_ok()); // At limit
+        assert!(validate_suffix(Some(&"a".repeat(64))).is_ok()); // At limit
     }
 
     #[test]
     fn test_validate_suffix_invalid() {
-        assert!(validate_suffix(Some(&"a".repeat(10001))).is_err()); // Too long
+        assert!(validate_suffix(Some(&"a".repeat(65))).is_err()); // Too long
     }
 
     #[test]
